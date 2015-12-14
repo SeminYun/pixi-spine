@@ -2,6 +2,9 @@ var spine = require('../SpineUtil');
 spine.TrackEntry = require('./TrackEntry');
 spine.AnimationState = function (stateData)
 {
+    //seminz
+    this.timeScales = {};
+    //end seminz
     this.data = stateData;
     this.tracks = [];
     this.events = [];
@@ -156,6 +159,9 @@ spine.AnimationState.prototype = {
     /** Set the current animation. Any queued animations are cleared. */
     setAnimation: function (trackIndex, animation, loop)
     {
+        //seminz
+        this.timeScale = this.timeScales[animation.name];
+        //end seminz
         var entry = new spine.TrackEntry();
         entry.animation = animation;
         entry.loop = loop;
