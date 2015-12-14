@@ -112,6 +112,10 @@ spine.SkeletonJsonParser.prototype = {
 
 
             slotData.blendMode = slotMap["blend"] && spine.SlotData.PIXI_BLEND_MODE_MAP[slotMap["blend"]] || spine.SlotData.PIXI_BLEND_MODE_MAP['normal'];
+            //seminz
+            if(!slotData.blendMode) slotData.blendMode = slotMap["additive"]?PIXI.BLEND_MODES.ADD:PIXI.BLEND_MODES.NORMAL;
+            //end seminz
+
 
             skeletonData.slots.push(slotData);
         }

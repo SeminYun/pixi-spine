@@ -104,6 +104,24 @@ function Spine(spineData)
      * @member {boolean}
      */
     this.autoUpdate = true;
+
+    //seminz
+    this.hitArea = new PIXI.Rectangle();
+    this.clickArea = new PIXI.Rectangle();
+    this.runLowerAnimation = this.spineData.findAnimation('run_lower');
+
+    this.shoot_slot = this.skeleton.findSlot('shoot');
+    if(this.shoot_slot === null){
+        this.shoot_slot = this.skeleton.findSlot('weapon_l');
+    }
+
+    var anis = this.spineData.animations;
+    for(var i in anis){
+        var ani = anis[i];
+        this.state.timeScales[ani.name] = 1.0;
+    }
+
+    this.play = true;
 }
 
 Spine.fromAtlas = function(resourceName) {
@@ -120,6 +138,30 @@ Spine.fromAtlas = function(resourceName) {
 Spine.prototype = Object.create(PIXI.Container.prototype);
 Spine.prototype.constructor = Spine;
 module.exports = Spine;
+
+//by seminz
+Spine.prototype.setTimeScale = function(aniName, speed) {
+    if(this.state.timeScales[aniName] === undefined) return;
+    this.state.timeScales[aniName] = speed;
+};
+
+Spine.prototype.getCurrentAnimationName = function(index) {
+    var entry = this.state.getCurrent(index);
+    if (!entry)
+        return null;
+    else
+        return entry.animation.name;
+};
+
+Spine.prototype.getCurrentAnimationName = function(index) {
+    var entry = this.state.getCurrent(index);
+    if (!entry)
+        return null;
+    else
+        return entry.animation.name;
+};
+
+//end seminz
 
 Object.defineProperties(Spine.prototype, {
     /**
@@ -153,8 +195,15 @@ Object.defineProperties(Spine.prototype, {
  */
 Spine.prototype.update = function (dt)
 {
+    //seminz
+    if(this.play === false) return;
+    //end seminz
+
     this.state.update(dt);
     this.state.apply(this.skeleton);
+    //seminz
+    if(this.preProcessing) this.preProcessing(dt);
+    //end seminz
     this.skeleton.updateWorldTransform();
 
     var drawOrder = this.skeleton.drawOrder;
@@ -251,6 +300,34 @@ Spine.prototype.update = function (dt)
             attachment.computeWorldVertices(slot.bone.skeleton.x, slot.bone.skeleton.y, slot, slot.currentMesh.vertices);
 
         }
+        //seminz
+        else if(type === spine.AttachmentType.boundingbox) {
+            if(attachment.name == "hitarea") {
+                var x = 0;
+                var y = 0;
+                var vertices = [];
+                vertices.length = 8;
+                attachment.computeWorldVertices(x, y, slot.bone, vertices);
+                var hitArea = JLib.getRectFromPoly(vertices);
+                this.hitArea.x = hitArea.x;
+                this.hitArea.y = hitArea.y
+                this.hitArea.width = hitArea.width;
+                this.hitArea.height = hitArea.height;
+            }
+            if(attachment.name == "click") {
+                var x = 0;
+                var y = 0;
+                var vertices = [];
+                vertices.length = 8;
+                attachment.computeWorldVertices(x, y, slot.bone, vertices);
+                var clickArea = JLib.getRectFromPoly(vertices);
+                this.clickArea.x = clickArea.x;
+                this.clickArea.y = clickArea.y
+                this.clickArea.width = clickArea.width;
+                this.clickArea.height = clickArea.height;
+            }
+        }
+        //seminz end
         else
         {
             slotContainer.visible = false;
@@ -285,24 +362,73 @@ Spine.prototype.autoUpdateTransform = function ()
  * @param attachment {spine.RegionAttachment} The attachment that the sprite will represent
  * @private
  */
+function createTextureByRegion(region) {
+    if(0) {
+        var texture = PIXI.utils.TextureCache[region.name];
+        if(texture){
+            return texture;
+        }
+    }
+    var spriteRect = new PIXI.Rectangle(
+        region.x,
+        region.y,
+        region.width,
+        region.height);
+    //region.rotate ? region.height : region.width,
+    //region.rotate ? region.width : region.height);
+
+    //console.log(region);
+
+    var trimmed = false;
+    if(region.originalWidth != region.width || region.originalHeight != region.height) {
+        trimmed = true;
+    }
+    var crop = null;
+    var trim = null;
+    if(trimmed) {
+        var spriteSourceSizeHeight = region.originalHeight - region.offsetY - region.height;
+        crop = spriteRect.clone();
+        trim = new PIXI.Rectangle(region.offsetX, spriteSourceSizeHeight, region.originalWidth, region.originalHeight);
+    }
+    var base_texture = region.page.rendererObject;
+    return new PIXI.Texture(base_texture, spriteRect, crop, trim, region.rotate );
+}
+
+
 Spine.prototype.createSprite = function (slot, attachment)
 {
     var descriptor = attachment.rendererObject;
-    var baseTexture = descriptor.page.rendererObject;
-    var spriteRect = new PIXI.Rectangle(descriptor.x,
-                                        descriptor.y,
-                                        descriptor.rotate ? descriptor.height : descriptor.width,
-                                        descriptor.rotate ? descriptor.width : descriptor.height);
-    var spriteTexture = new PIXI.Texture(baseTexture, spriteRect);
-    var sprite = new PIXI.Sprite(spriteTexture);
+    if(0){
+        var baseTexture = descriptor.page.rendererObject;
+        var spriteRect = new PIXI.Rectangle(descriptor.x,
+            descriptor.y,
+            descriptor.rotate ? descriptor.height : descriptor.width,
+            descriptor.rotate ? descriptor.width : descriptor.height);
+        var spriteTexture = new PIXI.Texture(baseTexture, spriteRect);
+    } else {
+        var spriteTexture = createTextureByRegion(descriptor);
+    }
 
-    var baseRotation = descriptor.rotate ? Math.PI * 0.5 : 0.0;
-    sprite.scale.x = attachment.width / descriptor.originalWidth * attachment.scaleX;
-    sprite.scale.y = attachment.height / descriptor.originalHeight * attachment.scaleY;
-    sprite.rotation = baseRotation - (attachment.rotation * spine.degRad);
-    sprite.anchor.x = (0.5 * descriptor.originalWidth - descriptor.offsetX) / descriptor.width;
-    sprite.anchor.y = 1.0 - ((0.5 * descriptor.originalHeight - descriptor.offsetY) / descriptor.height);
-    sprite.alpha = attachment.a;
+    var sprite = new PIXI.Sprite(spriteTexture);
+    //console.log('CREATE SPRITE', descriptor);
+
+    if(0){
+        var baseRotation = descriptor.rotate ? Math.PI * 0.5 : 0.0;
+        sprite.scale.x = attachment.width / descriptor.originalWidth * attachment.scaleX;
+        sprite.scale.y = attachment.height / descriptor.originalHeight * attachment.scaleY;
+        sprite.rotation = baseRotation - (attachment.rotation * spine.degRad);
+        sprite.anchor.x = (0.5 * descriptor.originalWidth - descriptor.offsetX) / descriptor.width;
+        sprite.anchor.y = (0.5 * descriptor.originalHeight - descriptor.offsetY) / descriptor.height;
+        sprite.alpha = attachment.a;
+    } else {
+        sprite.scale.x = attachment.scaleX;
+        sprite.scale.y = attachment.scaleY;
+        sprite.rotation =  -(attachment.rotation * spine.degRad);
+        sprite.anchor.x = (0.5);
+        sprite.anchor.y = (0.5);
+        sprite.alpha = attachment.a;
+    }
+
 
     slot.sprites = slot.sprites || {};
     slot.sprites[descriptor.name] = sprite;
