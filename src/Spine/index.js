@@ -133,7 +133,7 @@ Spine.fromAtlas = function(resourceName) {
     }
 
     return new Spine(skeletonData);
-}
+};
 
 Spine.prototype = Object.create(PIXI.Container.prototype);
 Spine.prototype.constructor = Spine;
@@ -310,7 +310,7 @@ Spine.prototype.update = function (dt)
                 attachment.computeWorldVertices(x, y, slot.bone, vertices);
                 var hitArea = JLib.getRectFromPoly(vertices);
                 this.hitArea.x = hitArea.x;
-                this.hitArea.y = hitArea.y
+                this.hitArea.y = hitArea.y;
                 this.hitArea.width = hitArea.width;
                 this.hitArea.height = hitArea.height;
             }
@@ -322,7 +322,7 @@ Spine.prototype.update = function (dt)
                 attachment.computeWorldVertices(x, y, slot.bone, vertices);
                 var clickArea = JLib.getRectFromPoly(vertices);
                 this.clickArea.x = clickArea.x;
-                this.clickArea.y = clickArea.y
+                this.clickArea.y = clickArea.y;
                 this.clickArea.width = clickArea.width;
                 this.clickArea.height = clickArea.height;
             }
@@ -408,9 +408,7 @@ Spine.prototype.createSprite = function (slot, attachment)
     } else {
         var spriteTexture = createTextureByRegion(descriptor);
     }
-
     var sprite = new PIXI.Sprite(spriteTexture);
-    //console.log('CREATE SPRITE', descriptor);
 
     if(0){
         var baseRotation = descriptor.rotate ? Math.PI * 0.5 : 0.0;
